@@ -276,7 +276,9 @@ pip install -e .
 cd ../..
 ```
 
-This has the advantage of using the latest of all the packages.
+This has the advantage of using the latest of all the packages, so it trains about 20% faster.  I added support for DDP but it didn't seem to help.
+
+I added a --swap_blocks option to the training script, which seems to do better than baseline by about 3% accuracy on test set.
 
 
 ## Training

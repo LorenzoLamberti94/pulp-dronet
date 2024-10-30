@@ -38,6 +38,7 @@ import argparse
 from utility import str2bool
 import numpy as np
 import shutil
+import random
 from os.path import join
 from tqdm import tqdm
 import pandas as pd
@@ -69,11 +70,14 @@ from utility import write_log
 alpha = 1.0
 beta = 0.0
 
+def get_free_port():
+    """Generate a random port number between 12000 and 65535."""
+    return random.randint(12000, 65535)
 
-def setup(rank, world_size):
+def setup(rank, world_size, port):
     """Initialize the distributed environment."""
     os.environ['MASTER_ADDR'] = 'localhost'
-    os.environ['MASTER_PORT'] = '12355'
+    os.environ['MASTER_PORT'] = str(port)
     dist.init_process_group("nccl", rank=rank, world_size=world_size)
 
 def cleanup():
@@ -109,6 +113,7 @@ def create_parser(cfg):
     parser.add_argument('-c', '--checkpoint_path', default=cfg.checkpoint_path)
     parser.add_argument('--logs_dir', default=cfg.logs_dir)
     parser.add_argument('--verbose', action='store_true')
+    parser.add_argument('--swap_blocks', action='store_true')
     return parser
 
 def validate(test_set, net, data_loader, tensorboard_writer, logs_dir, df_valid, epoch, device, args):
@@ -160,20 +165,25 @@ def validate(test_set, net, data_loader, tensorboard_writer, logs_dir, df_valid,
     
     return df_valid
 
-def train(rank, world_size, args):
+def train(rank, world_size, args, port):
     micro_batch_size = args.batch_size // world_size
     print(f"Training process {rank} of {world_size}: micro_batch_size={micro_batch_size}")
     """Main training function for each GPU process."""
-    setup(rank, world_size)
+    setup(rank, world_size, port)
     torch.cuda.set_device(rank)
     
     # Model initialization
     if args.block_type == "ResBlock":
-        net = dronet(depth_mult=args.depth_mult, block_class=ResBlock, bypass=args.bypass)
+        net = dronet(depth_mult=args.depth_mult, block_class=ResBlock, bypass=args.bypass, swap_blocks=args.swap_blocks)
     elif args.block_type == "Depthwise":
-        net = dronet(depth_mult=args.depth_mult, block_class=Depthwise_Separable, bypass=args.bypass)
+        net = dronet(depth_mult=args.depth_mult, block_class=Depthwise_Separable, bypass=args.bypass, swap_blocks=args.swap_blocks)
     elif args.block_type == "IRLB":
-        net = dronet(depth_mult=args.depth_mult, block_class=Inverted_Linear_Bottleneck, bypass=args.bypass)
+        net = dronet(depth_mult=args.depth_mult, block_class=Inverted_Linear_Bottleneck, bypass=args.bypass, swap_blocks=args.swap_blocks)
+
+    if rank == 0:
+        model_stats = summary(net, input_size=(1, 1, 200, 200), verbose=0)
+        print(f"\nTotal parameters: {model_stats.total_params:,}")
+        print(f"Trainable parameters: {model_stats.trainable_params:,}\n")
 
     if not args.resume_training:
         net.apply(init_weights)
@@ -376,12 +386,13 @@ def main():
         print("No CUDA devices available. Running on CPU.")
         return
         
-    print(f"Training with {n_gpus} GPUs")
+    port = get_free_port()
+    print(f"Training with {n_gpus} GPUs on port {port}")
     print("pyTorch version:", torch.__version__)
-    
+
     # Launch distributed training
     try:
-        mp.spawn(train, args=(n_gpus, args,), nprocs=n_gpus, join=True)
+        mp.spawn(train, args=(n_gpus, args, port,), nprocs=n_gpus, join=True)
     except Exception as e:
         print(f"Error during training: {str(e)}")
         raise

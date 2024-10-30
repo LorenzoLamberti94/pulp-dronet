@@ -209,7 +209,7 @@ class dronet(nn.Module):
     ResBlock = ResBlock
     Depthwise_Separable = Depthwise_Separable
     Inverted_Linear_Bottleneck = Inverted_Linear_Bottleneck
-    def __init__(self, depth_mult=1.0, block_class=ResBlock, nemo=False, bypass=True):
+    def __init__(self, depth_mult=1.0, block_class=ResBlock, nemo=False, bypass=True, swap_blocks=False):
         super(dronet, self).__init__()
         self.nemo=nemo # Prepare network for quantization? [True, False]
         first_conv_channels=int(32*depth_mult)
@@ -221,12 +221,17 @@ class dronet(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, return_indices=False, ceil_mode=False)
         # Three blocks, each one doubling the number of channels
         self.Block1 = block_class(first_conv_channels,   first_conv_channels,   bypass=bypass)
-        self.Block2 = block_class(first_conv_channels,   first_conv_channels*2, bypass=bypass)
-        self.Block3 = block_class(first_conv_channels*2, first_conv_channels*4, bypass=bypass)
+        if swap_blocks:
+            self.Block2 = block_class(first_conv_channels,   first_conv_channels*6, bypass=bypass)
+            self.Block3 = block_class(first_conv_channels*6, first_conv_channels*2, bypass=bypass)
+            fc_size = (first_conv_channels*2)*7*7
+        else:
+            self.Block2 = block_class(first_conv_channels,   first_conv_channels*2, bypass=bypass)
+            self.Block3 = block_class(first_conv_channels*2, first_conv_channels*4, bypass=bypass)
+            fc_size = (first_conv_channels*4)*7*7
         # Dropout layer
         if not self.nemo: self.dropout = nn.Dropout(p=0.5, inplace=False)
         # Fully connected layer
-        fc_size = (first_conv_channels*4)*7*7
         self.fc = nn.Linear(in_features=fc_size, out_features=2, bias=False)
         self.sig = nn.Sigmoid()
 
