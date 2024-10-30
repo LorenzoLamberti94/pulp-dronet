@@ -1,0 +1,14 @@
+joblib
+opencv-python
+packaging
+pandas
+pillow
+tensorboard
+pyparsing
+threadpoolctl
+torch
+torchsummary
+torchvision
+tqdm
+typing-extensions
+torchinfo

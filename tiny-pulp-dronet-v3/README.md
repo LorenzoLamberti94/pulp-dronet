@@ -260,6 +260,27 @@ The file includes the following columns:
 
 All the python scripts (training.py, testing.py, quantize.py) take default values of variables from the config.py file. Each argument added by command line will override default values.
 
+## Catid modifications
+
+I tried the setup instructions and of course they didn't work.  The setup instructions never work in this kind of repo, and no one seems to care to make their code work on other machines.
+
+To get setup on my Lambda vector 2x4090 Intel machine running CUDA 12.6 I added a requirements.txt file and set up the conda environment with the following commands:
+
+```bash
+conda create -n tiny python=3.10 -y && conda activate tiny
+
+pip install -U -r requirements.txt
+
+cd nemo-dory/nemo
+pip install -e .
+cd ../..
+```
+
+This has the advantage of using the latest of all the packages, so it trains about 20% faster.  I added support for DDP but it didn't seem to help.
+
+I added a --swap_blocks option to the training script, which seems to do better than baseline by about 3% accuracy on test set.
+
+
 ## Training
 
 ```
