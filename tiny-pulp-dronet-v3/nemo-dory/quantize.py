@@ -68,7 +68,7 @@ from torchvision import transforms
 sys.path.append('./nemo-dory/nemo/')
 try:
     import nemo
-    print("nemo imported successfully")
+    #print("nemo imported successfully")
 except ModuleNotFoundError:
     print("Failed to import nemo")
     print(sys.path)
