@@ -1,3 +1,11 @@
+
+<div align="center"; margin: 0px; padding: 0px;">
+  <a href="https://arxiv.org/abs/2407.12675">
+    <img alt="ArXiv" src="https://img.shields.io/badge/arXiv-2407.12675-blue?logo=arxiv&color=%23B31B1B">
+  </a>
+</div>
+
+
 # Tiny-PULP-Dronet v3
 
 <div align="center">
